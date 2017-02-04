@@ -1,67 +1,89 @@
-+(function($){
-	var defOption={
-		width:350,
-		maR:10,
-		maB:10,
-		padding:10,
-		$this:null,
-		$eleNum:null,
-		$child:null
-	}
-	var recalc=function(option){
-		var $this=option.$this,$eleNum=option.$eleNum,$child=option.$child
-		var $width=$this.parent().width()-(option.padding*2)
-		var cols=parseInt($width/(option.width+option.maR/2))
-		var top=option.padding,
-			left=option.padding,
-			$eleHeight,
-			wrapHeight,
-			list=[],
-			$ele,
-			eleHeight=option.padding,
-			listHeight=[]
-		for(var i=0;i<cols;i++){
-				list.push([])
-				for(var j=0;j<$eleNum;j++){
-					var index=i+j*cols
-					if($child[index]){
-						list[i].push($child[index])
-					}
-				}
-			}
-		
-		for(var j=0;j<list.length;j++){
-			for(var l=0;l<list[j].length;l++){
-				$ele=list[j][l]
-				$($ele).animate({
-					top:top+'px',
-					left:left+'px'
-				})
-				$eleHeight=$($ele).height()
-				eleHeight+=$eleHeight+option.maB
-				top=top+option.maB+$eleHeight
-			}
-			listHeight.push(eleHeight)
-			eleHeight=option.padding
-			top=option.padding
-			left=left+option.width+option.maR
-		}
+/**
+ * Created by elly on 2017/1/29.
+ */
+;(function ($) {
+    'use strict';
 
-		$wrapHeight=Math.max.apply(Math, listHeight);
-		$this.css({height:$wrapHeight-option.maB+(option.padding*2)+'px'})
-	}
-	
-	$.fn.pbl=function(options){
-		var option=$.extend(defOption,options)
-		return this.each(function(){
-			var $this=option.$this=$(this)
-			var $child=option.$child=$this.find("li")
-			var $eleNum=option.$eleNum=option.$child.length
-			$this.css({position:'relative'})
-			$child.css({width:option.width+'px',position:'absolute'})
-			$(window).on('resize load',function(){
-				recalc(option)
-			})
-		})
-	}
-})(jQuery)
+    var DEFAULT_OPTIONS = {
+        width: 460,
+        marginRight: 20,
+        marginBottom: 20,
+        onInit: function () {
+        }
+    };
+
+    function Waterfall(element, options) {
+        this.element = $(element);
+        this.options = $.extend({}, DEFAULT_OPTIONS, options);
+        this.init();
+        this.resize();
+    }
+
+
+    Waterfall.prototype.init = function () {
+        var $this = this.element;
+        var options = this.options;
+        var width = options.width;
+        var marginRight = options.marginRight;
+        var marginBottom = options.marginBottom;
+        var $children = $this.find('li');
+        var $length = $children.length;
+        var $width = $this.parent().innerWidth();
+        var cols = Math.floor(($width + marginRight) / (width + marginRight));
+        var floorRows = Math.floor($length / cols);
+        var lastRowNum = $length - floorRows * cols;
+        lastRowNum = lastRowNum || cols;
+        var top = 0;
+        var left = 0;
+        var warpHeight = 0;
+
+        $children.css({width: width});
+
+        for (var i = 0; i < cols; i++) {
+            var index = 0;
+            for (var j = 0; index < $length; j++) {
+                index = i + j * cols;
+                var $child = $children[index];
+                if ($child) {
+                    $child = $($child);
+                    $child.animate({
+                        top: top,
+                        left: left
+                    });
+                    options.onInit($child, index, cols);
+                    top = top + $child.height() + marginBottom;
+                    if (index >= $length - lastRowNum && index <= $length) {
+                        warpHeight = Math.max(warpHeight, top)
+                    }
+                }
+            }
+            top = 0;
+            left = left + width + marginRight;
+        }
+        $this.css({height: warpHeight});
+    };
+
+    Waterfall.prototype.resize = function () {
+        var that = this;
+        $(window).on('resize', function () {
+            that.init()
+        });
+    };
+
+    function Plugin(options) {
+        return this.each(function () {
+            var $this = $(this),
+                $children = $this.find("li"),
+                data = $this.data('ellie.waterfall'),
+                _options = typeof options == 'object' && options;
+            if (!data) {
+                $this.css({position: 'relative'});
+                $children.css({position: 'absolute'});
+                $this.data('ellie.waterfall', ( data = new Waterfall(this, _options) ));
+            }
+        })
+    }
+
+    $.fn.waterfall = Plugin;
+
+})(jQuery);
